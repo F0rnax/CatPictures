@@ -18,7 +18,11 @@ function getImage($url, $path){
     }
 }
 
+
+$validTags = false;
+
 //Prompt the user for comma-delimited input
+while (!$validTags){
 $inputTags = getInput("Enter Tags for Cats: ");
 
 //Convert the input into an array
@@ -33,23 +37,28 @@ $apiTags = json_decode($tagsReponse, true);
 
 //Checking the user tags with tags from the API to see if they're usable
 $difference = array_diff($tagsArray, $apiTags);
-
-if (empty($difference)) {
-    echo "Tags look good.\n";
-} else {
-    echo "Not all tags given can be used.\n";
-    echo "Missing elements: " . implode(', ', $difference) . "\n";
-    exit;
+    
+    if (empty($difference)) {
+        $validTags = true;
+        echo "Tags look good.\n";
+    } else {
+        echo "These tags are unusable: " . implode(', ', $difference) . "\n";
+        echo "Make sure tags are separated by commas! \n";
+    }
 }
 
+$validNumber = false;
+
+while(!$validNumber){
 //Promting the user for input of how many pictures they want
 $inputAmount = getInput("Enter the number of how many cat pictures you want: ");
 //Making sure input is an int
-if (!filter_var($inputAmount, FILTER_VALIDATE_INT)) {
-    echo "Input must be a number.";
-    exit;
+if (filter_var($inputAmount, FILTER_VALIDATE_INT)) {
+    $validNumber = true;
+} else {
+    echo "Input must be a number. \n";
 }
-
+}
 
 //Creating the API URL for determining limits and tags
 $apiUrl = "https://cataas.com/api/cats?limit=$inputAmount&skip=0&tags=$inputTags";
@@ -65,8 +74,6 @@ $inputFolder = getInput("Enter the folder name for the pictures: ");
 if(!empty($pictures)){
     if (!is_dir($inputFolder)){
         mkdir($inputFolder);
-    } else {
-        echo "Folder already exists! \n";
     }
 }
 

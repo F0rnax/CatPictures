@@ -1,43 +1,95 @@
 #!/usr/bin/php
 <?php
 
-// Specify the number of cat pictures you want
-$pictureAmount = (int)readline("How many cat pictures would you like?: ");
+//This function grabs a prompt and user input
+function getInput($message){
+    echo $message;
+    return trim(fgets(STDIN));
+}
 
-// Create a directory to save the cat pictures
-$directory = (string)readline('What is the name of the folder you want the pictues in?: ');
-
-
-if (!is_dir($directory)) {
-    mkdir($directory);
-} else {
-    echo ("This folder already exists, try again!\n");
+//This function grabs gets image info and saves it in the path determined
+function getImage($url, $path){
+    $file = file_get_contents($url);
+    if($file) {
+        file_put_contents($path, $file);
+        echo "Image saved: $path\n";
+    } else {
+        echo "Failed to download image: $url\n";
+    }
 }
 
 
-//check if there are any pictures in a directory
-$hasFiles = scandir($directory);
+$validTags = false;
+
+//Prompt the user for comma-delimited input
+while (!$validTags){
+$inputTags = getInput("Enter Tags for Cats: ");
+
+//Convert the input into an array
+$tagsArray = explode(',', $inputTags);
+
+//Trim the values in the Array
+$tagsArray = array_map('trim', $tagsArray);
+
+//Getting a response from the API and decoding the JSON
+$tagsReponse = file_get_contents('https://cataas.com/api/tags');
+$apiTags = json_decode($tagsReponse, true);
+
+//Checking the user tags with tags from the API to see if they're usable
+$difference = array_diff($tagsArray, $apiTags);
+    
+    if (empty($difference)) {
+        $validTags = true;
+        echo "Tags look good.\n";
+    } else {
+        echo "These tags are unusable: " . implode(', ', $difference) . "\n";
+        echo "Make sure tags are separated by commas! \n";
+    }
+}
+
+$validNumber = false;
+
+while(!$validNumber){
+//Promting the user for input of how many pictures they want
+$inputAmount = getInput("Enter the number of how many cat pictures you want: ");
+//Making sure input is an int
+if (filter_var($inputAmount, FILTER_VALIDATE_INT)) {
+    $validNumber = true;
+} else {
+    echo "Input must be a number. \n";
+}
+}
+
+//Creating the API URL for determining limits and tags
+$apiUrl = "https://cataas.com/api/cats?limit=$inputAmount&skip=0&tags=$inputTags";
+
+//Make a request to the API and retrieve the URLs
+$response = file_get_contents($apiUrl);
+$pictures = json_decode($response, true);
+
+//Prompting the user for the folder name to hold the pictures
+$inputFolder = getInput("Enter the folder name for the pictures: ");
+
+//Check if any pictures were recevied
+if(!empty($pictures)){
+    if (!is_dir($inputFolder)){
+        mkdir($inputFolder);
+    }
+}
+
+//Scanning to see if any files are in the folder that was created.
+$hasFiles = scandir($inputFolder);
 
 if (count($hasFiles) == 0 || count($hasFiles) == 2){
-// Grab the amount if cat pictures you want and name them
-for ($i = 1; $i <= $pictureAmount; $i++) {
-    $imageUrl = "https://cataas.com/cat";
-    $imagePath = $directory . '/cat' . $i . '.jpg';
-    
-    //Grab the contents of the imageUrl
-    $imageData = file_get_contents($imageUrl);
-    
-    //If we have imageData, save the file and let us know
-    if ($imageData) {
-        file_put_contents($imagePath, $imageData);
-        echo "Image saved: $imagePath\n";
-    } else {
-        echo "Failed to download image: $imageUrl\n";
-    }
-} 
+
+//Download and store each cat picture
+foreach($pictures as $index => $picture){
+    $imageUrl = "https://cataas.com/cat/" . $picture['_id'];
+    $imagePath = $inputFolder . '/cat' . ($index + 1) . '.jpg';
+    getImage($imageUrl, $imagePath);
+}
 } else {
-    echo ("There are already files in this folder, make a new folder.\n");
+    echo "This folder already has files in it! \n";
     exit;
 }
-
 ?>
